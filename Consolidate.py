@@ -58,8 +58,8 @@ def GetSources(sourceFolder):
         tmpKey = os.path.basename(os.path.splitext(vidPath)[0])
         #print("\t"+"("+tmpKey+")"+vidPath) #Debug
         if tmpKey in dictSubt:
-            #Create a dictionary {objectName: [videoPath, subtitlesPath, OrderedDict{FrameNum:[Labels]}]}
-            dictFiles[tmpKey] = [vidPath, dictSubt[tmpKey], OrderedDict()]
+            #Create a dictionary {objectName: [videoPath, subtitlesPath, {FrameNum:[Labels]}]}
+            dictFiles[tmpKey] = [vidPath, dictSubt[tmpKey], {}]
         else:
             raise Exception("The file "+vidPath+" does not have a matching subtitles file (.srt).")
     print(str(len(dictFiles))+" object(s) were found as source file(s)")
@@ -82,7 +82,7 @@ def Consolidate():
     printArgs(sourceFolder, predictionFolder, outputFolder, weightsPath, imageSize, confidenceScore, inferencePath)
 
     #Check the videos in the source folder and their subtitles
-    #{objectName: [videoPath, subtitlesPath, OrderedDict{FrameNum:[Labels],{sensor:sensorData}}]}
+    #{objectName: [videoPath, subtitlesPath, {FrameNum:[Labels],{sensor:sensorData}}]}
     sourceObjects = GetSources(sourceFolder)
 
     #loadedInference = dict()
@@ -159,6 +159,7 @@ def Consolidate():
         #Get FPS of video        
         cam = cv2.VideoCapture(valueObjFPS[0])
         fps = cam.get(cv2.CAP_PROP_FPS)
+        #print("FPS:", fps)
 
         #loop the frames dictionary
         for frameIndexKey, frameIndexValues in valueObjFPS[2].items():
@@ -166,20 +167,22 @@ def Consolidate():
             timestamp = float(frameIndexKey)/fps
             frameMs = 1000.0*timestamp
             #timestampR = datetime.datetime.fromtimestamp(frameMs//1000)
-            #print("\t\tFrame: ", frameIndexKey, " -> ms: ", frameMs, " -> ", timestampR.time())
+            #print("\t\tFrame: ", frameIndexKey, " -> timestamp: ", timestamp, " -> frameMs:", round(frameMs,2))
             relevantSubt = {}
             for d_key, d_value in subtitles.items():
                 if(frameMs >= d_key):
                     if(frameMs < d_value[0]):
-                        relevantSubt = d_value[1]
+                        relevantSubt = dict(d_value[1])
                 else:
                     break
             if(len(relevantSubt) == 0):
                 print("\t\t\tWarning! No sensor data found in the .srt file for frame "+str(frameIndexKey)+"!")
             relevantSubt["Timestamp"] = timestamp
             frameIndexValues[1] = relevantSubt
-            (sourceObjects[keyObjFPS][2])[frameIndexKey] = frameIndexValues
+            sourceObjects[keyObjFPS][2][frameIndexKey] = frameIndexValues
+            #print(sourceObjects[keyObjFPS][2][frameIndexKey])
         
+        #print(sourceObjects[keyObjFPS][2])
         #pprint.pprint(sourceObjects[keyObjFPS])
 
 
